@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Colorful Dragon (Canvas)</title>
+  <style>
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#0a0f2b 0%, #0f1b3a 50%, #072025 100%);display:flex;align-items:center;justify-content:center;font-family:Arial}
+    #stage{width:90vw;max-width:1100px;height:70vh;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.6);background:transparent}
+    .controls{position:fixed;left:20px;bottom:20px;background:rgba(255,255,255,0.06);padding:12px;border-radius:10px;color:#fff}
+    .controls label{display:inline-block;margin-right:8px}
+    button{margin-left:8px;padding:6px 10px;border:0;border-radius:6px;background:#fff;color:#222;cursor:pointer}
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div class="controls">
+    <label>Speed</label>
+    <input id="speed" type="range" min="0" max="2" step="0.05" value="1">
+    <button id="shuffle">Shuffle colors</button>
+    <button id="download">Download PNG</button>
+  </div>
+
+<script>
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+let DPR = window.devicePixelRatio || 1;
+function resize(){
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width * DPR);
+  canvas.height = Math.floor(rect.height * DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+
+// make canvas fill its parent area responsively
+function fit(){
+  const vw = Math.min(window.innerWidth*0.9,1100);
+  const vh = window.innerHeight*0.7;
+  canvas.style.width = vw + 'px';
+  canvas.style.height = vh + 'px';
+  resize();
+}
+window.addEventListener('resize', fit);
+fit();
+
+// Color palette utilities
+function randBright(){
+  const h = Math.floor(Math.random()*360);
+  const s = 70 + Math.random()*30;
+  const l = 45 + Math.random()*15;
+  return `hsl(${h} ${s}% ${l}%)`;
+}
+
+let palette = [ '#ff4b5c', '#ff9f1c', '#ffd166', '#06d6a0', '#118ab2', '#8338ec', '#ff6bcb' ];
+function shufflePalette(){
+  palette = Array.from({length:7},randBright);
+}
+
+// Dragon parameters (normalized coordinates)
+const params = {
+  headX: 0.75, headY: 0.35,
+  bodyStartX: 0.1, bodyStartY: 0.5,
+  bodyEndX: 0.9, bodyEndY: 0.6,
+  wingX: 0.45, wingY: 0.2
+};
+
+// animation state
+let t = 0;
+const speedControl = document.getElementById('speed');
+let globalSpeed = +speedControl.value;
+speedControl.addEventListener('input', ()=> globalSpeed = +speedControl.value);
+
+document.getElementById('shuffle').addEventListener('click', () => { shufflePalette(); });
+
+document.getElementById('download').addEventListener('click', ()=>{
+  const link = document.createElement('a');
+  link.download = 'colorful-dragon.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+function drawGradientBody(x,y,w,h,angle,colors){
+  const g = ctx.createLinearGradient(x,y, x + Math.cos(angle)*w, y + Math.sin(angle)*h);
+  const step = 1/(colors.length-1);
+  colors.forEach((c,i)=> g.addColorStop(i*step, c));
+  return g;
+}
+
+function drawDragon(){
+  const W = canvas.width / DPR;
+  const H = canvas.height / DPR;
+  ctx.clearRect(0,0,W,H);
+
+  // background soft glow behind dragon
+  const bgG = ctx.createRadialGradient(W*0.5, H*0.45, 20, W*0.5, H*0.45, Math.max(W,H));
+  bgG.addColorStop(0, 'rgba(255,255,255,0.06)');
+  bgG.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = bgG;
+  ctx.fillRect(0,0,W,H);
+
+  // body spine control points
+  const x0 = params.bodyStartX * W;
+  const y0 = params.bodyStartY * H;
+  const x1 = W*0.35 + Math.sin(t*0.8)*40;
+  const y1 = H*0.4 + Math.cos(t*0.6)*20;
+  const x2 = W*0.6 + Math.sin(t*0.5)*30;
+  const y2 = H*0.55 + Math.cos(t*0.4)*30;
+  const x3 = params.bodyEndX * W;
+  const y3 = params.bodyEndY * H;
+
+  // draw layered body with gradient colors
+  for(let layer=6; layer>=0; layer--){
+    const thickness = 40 + layer*12;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 - layer*4);
+    ctx.bezierCurveTo(x1, y1 - layer*6, x2, y2 - layer*8, x3, y3 - layer*4);
+    ctx.lineTo(x3, y3 + thickness - layer*4);
+    ctx.bezierCurveTo(x2, y2 + thickness - layer*8, x1, y1 + thickness - layer*6, x0, y0 + thickness - layer*4);
+    ctx.closePath();
+    const g = drawGradientBody(x0,y0, thickness*2, thickness, Math.PI*0.6, [palette[(layer)%palette.length], palette[(layer+2)%palette.length]]);
+    ctx.fillStyle = g;
+    ctx.fill();
+  }
+
+  // scales along the back
+  const scales = 24;
+  for(let i=0;i<=scales;i++){
+    const u = i/scales;
+    const px = cubicBezier(x0,x1,x2,x3,u);
+    const py = cubicBezier(y0,y1,y2,y3,u);
+    const angle = Math.atan2( bezierTangent(y0,y1,y2,y3,u), bezierTangent(x0,x1,x2,x3,u) );
+    const size = 8 + 12*Math.sin(u*Math.PI + t*1.6);
+    ctx.save();
+    ctx.translate(px,py);
+    ctx.rotate(angle);
+    drawScale(size, palette[(i+3)%palette.length]);
+    ctx.restore();
+  }
+
+  // head
+  const hx = params.headX * W + Math.sin(t*1.4)*6;
+  const hy = params.headY * H + Math.cos(t*1.2)*8;
+  ctx.save();
+  ctx.translate(hx,hy);
+  // jaw
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.quadraticCurveTo(60, -10, 90, 10);
+  ctx.quadraticCurveTo(60, 24, 0, 10);
+  ctx.closePath();
+  ctx.fillStyle = drawGradientBody(0,0,90,40,0,[palette[1],palette[4]]);
+  ctx.fill();
+
+  // eye
+  ctx.beginPath();
+  ctx.ellipse(30,2,8,6,0,0,Math.PI*2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.beginPath(); ctx.arc(32,2,3,0,Math.PI*2); ctx.fillStyle='#000'; ctx.fill();
+
+  // horns
+  ctx.beginPath();
+  ctx.moveTo(-6,-12);
+  ctx.lineTo(-18,-34);
+  ctx.lineTo(-4,-30);
+  ctx.closePath(); ctx.fillStyle=palette[6]; ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(6,-12);
+  ctx.lineTo(18,-28);
+  ctx.lineTo(6,-26);
+  ctx.closePath(); ctx.fillStyle=palette[5]; ctx.fill();
+
+  ctx.restore();
+
+  // wings (flapping)
+  const wx = W*0.45;
+  const wy = H*0.37;
+  drawWing(wx,wy, 1.2 + Math.sin(t*2.2)*0.2, palette[2], palette[5]);
+  drawWing(wx-40,wy+20, 0.9 + Math.cos(t*1.8)*0.18, palette[3], palette[1]);
+
+  // finishing stroke on body
+  ctx.beginPath();
+  ctx.moveTo(x0,y0);
+  ctx.bezierCurveTo(x1,y1, x2,y2, x3,y3);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.stroke();
+
+  // subtle sparkles
+  for(let i=0;i<12;i++){
+    const sx = Math.random()*W;
+    const sy = Math.random()*H*0.9;
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(sx, sy, 2,2);
+  }
+}
+
+function drawScale(size, color){
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.quadraticCurveTo(size/2, -size/1.6, size,0);
+  ctx.quadraticCurveTo(size/2, size/1.6, 0,0);
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.stroke();
+}
+
+function drawWing(x,y, spread, c1, c2){
+  const W = canvas.width/DPR;
+  const H = canvas.height/DPR;
+  ctx.save();
+  ctx.translate(x,y);
+  const flap = Math.sin(t*2.6) * 20 * spread;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.bezierCurveTo( -140*spread, -80 - flap, -260*spread, 60 + flap, -100*spread, 160);
+  ctx.lineTo(20,120);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(-260, -80, 20, 160);
+  g.addColorStop(0, c1);
+  g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// cubic bezier evaluator for points
+function cubicBezier(p0,p1,p2,p3,t){
+  const mt = 1-t;
+  return mt*mt*mt*p0 + 3*mt*mt*t*p1 + 3*mt*t*t*p2 + t*t*t*p3;
+}
+// derivative approx
+function bezierTangent(p0,p1,p2,p3,t){
+  const mt = 1-t;
+  return 3*mt*mt*(p1-p0) + 6*mt*t*(p2-p1) + 3*t*t*(p3-p2);
+}
+
+// animation loop
+function loop(ts){
+  const dt = (ts - (loop.last||ts))/1000;
+  loop.last = ts;
+  t += dt * (0.6 + globalSpeed*0.8);
+  drawDragon();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// initial palette shuffle for variety
+shufflePalette();
+
+</script>
+</body>
+</html>

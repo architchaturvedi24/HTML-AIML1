@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simple Slide Show</title>
+<style>
+  body { text-align: center; background: hwb(0 95% 5%); font-family: Arial; }
+  .slide {
+    display: none;
+    font-size: 2rem;
+    padding: 50px;
+    background: goldenrod;
+    margin: 50px auto;
+    width: 60%;
+    border-radius: 15px;
+    box-shadow: 0 0 10px #808080;
+  }
+  .active { display: block; }
+</style>
+</head>
+<body>
+
+<h1>🌟 HTML Slide Show 🌟</h1>
+
+<div class="slide active">Slide 1: Welcome!</div>
+<div class="slide">Slide 2: About Us</div>
+<div class="slide">Slide 3: Thank You!</div>
+
+<script>
+  let index = 0;
+  const slides = document.querySelectorAll('.slide');
+
+  setInterval(() => {
+    slides[index].classList.remove('active');
+    index = (index + 1) % slides.length;
+    slides[index].classList.add('active');
+  }, 2000); // 2 second me next slide
+</script>
+
+</body>
+</html>
