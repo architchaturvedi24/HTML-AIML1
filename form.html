@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form</title>
+</head> 
+<body>
+<div class="form-box">
+
+    <legend>Biodata</legend>
+    <form action="./response.html" name="biodata" target="blank" method="get" allign="centre">
+        <label for="name"> Name:</label>
+        <input type="text" id="name" name="name" placeholder="Enter your name" required>
+    <br><br>
+    <label for="dob"> Date of Birth:</label>
+    <input type="date" value="2024-06-01" id="dob" name="dob">
+    <br><br>
+    <label for="attempt"> Number of Attempts:</label>
+    <input type="number" id="attempt" name="attempt" min="1" max="5" step="1" value="1">
+    <br><br>
+    <label for="email"> Email:</label>
+    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+    <br><br>
+    <label for="add"> Address:</label>
+    <textarea id="add" name="text" rows="4" cols="5" placeholder="Enter your address"></textarea>
+    <br><br>
+    <label for="tel"> Phone Number:</label>
+    <input type="tel" id="tel" name="tel" placeholder="123-456-7890" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" required>
+    <br><br>
+    <label for="gender">Gender</label>
+    <label type="radio" id="male" name="gender" value="male">   
+    <input type="radio" id="female" name="gender" value="female">   
+    <label for="female"> Female</label>
+    <label for="check">VEHICLES u have</label>
+    <input type="checkbox" id="car" name="vehicle1" value="Car">
+    <label for="car"> Car</label>
+    <label for="bike">VEHICLES u have</label>
+    <input type="checkbox" id="bike" name="vehicle2" value="Bike">
+    <label for="bike"> Bike</label>
+    <br><br>
+    <label for="select">Select your language:</label>
+    <select id="select" name="select">
+        <option value="python">Python</option>
+        <option value="java">Java</option>
+        <option value="c++">C++</option>
+        <option value="javascript">JavaScript</option>
+
+        <optgroup label="Web Development">
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="php">PHP</option>
+    </select>
+     
+    <label for="file"> Upload your file:</label>
+    <input type="file" id="file" name="file">
+    <br><br>
+    <input type="password" id="pass" name="pass" placeholder="Enter your password" required>
+    <br><br>
+    <input type="time" id="appoint" name="appoint" value="12:00">
+    <input type="reset" value="Reset">
+    <input type="submit" value="Submit">
+    <lebel type="url" for="website"> Website:</lebel>
+    <input type="url" id="website" name="website" placeholder="https://example.com">
+
+
+        
+    </form>
+</div>
+
+    
+</body>
+</html>
