@@ -1,0 +1,304 @@
+!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Interactive Calendar</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --accent:#60a5fa;
+      --muted:#94a3b8;
+      --today-bg:#fde68a;
+      --today-color:#0b1220;
+      --shadow: 0 8px 30px rgba(2,6,23,0.6);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: linear-gradient(180deg,#071029 0%, #0b1530 100%);
+      color:#e6eef8;
+      padding:24px;
+    }
+
+    .calendar {
+      width:100%;
+      max-width:740px;
+      background:linear-gradient(180deg,var(--card), #071225);
+      border-radius:14px;
+      padding:20px;
+      box-shadow:var(--shadow);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+
+    .header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .month-year {
+      display:flex;
+      gap:16px;
+      align-items:center;
+    }
+
+    .month-year h2{
+      margin:0;
+      font-size:1.25rem;
+      letter-spacing:0.2px;
+    }
+    .muted { color:var(--muted); font-size:0.95rem; }
+
+    .controls {
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    button.btn {
+      background:transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:inherit;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      transition:all .15s ease;
+      backdrop-filter: blur(6px);
+    }
+
+    button.btn:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(8,12,20,0.45); }
+    button.icon { padding:8px; display:inline-grid; place-items:center; }
+
+    .weekdays {
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:6px;
+      margin-top:8px;
+      margin-bottom:8px;
+    }
+
+    .weekday {
+      text-align:center;
+      padding:8px 6px;
+      font-weight:700;
+      font-size:0.85rem;
+      color:var(--muted);
+      border-radius:8px;
+    }
+
+    .days {
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:10px;
+    }
+
+    .day {
+      min-height:78px;
+      border-radius:10px;
+      padding:8px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));
+      border:1px solid rgba(255,255,255,0.02);
+      position:relative;
+      overflow:hidden;
+      transition:transform .12s ease, box-shadow .12s;
+    }
+
+    .day:hover { transform:translateY(-6px); box-shadow:0 14px 30px rgba(3,6,20,0.6); }
+
+    .day.inactive { opacity:0.32; filter:grayscale(20%); }
+    .day-number {
+      font-weight:700;
+      font-size:0.98rem;
+      display:block;
+      margin-bottom:8px;
+    }
+
+    .today {
+      background:linear-gradient(180deg,var(--today-bg), #fff7d0);
+      color:var(--today-color);
+      border:1px solid rgba(0,0,0,0.06);
+      box-shadow: 0 10px 30px rgba(251,206,98,0.12);
+    }
+
+    .small-note {
+      font-size:0.78rem;
+      color:var(--muted);
+      line-height:1.1;
+    }
+
+    .legend {
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      color:var(--muted);
+      font-size:0.9rem;
+    }
+
+    /* Responsive */
+    @media (max-width:560px){
+      .day { min-height:64px; }
+      .month-year h2 { font-size:1rem; }
+      .calendar { padding:14px; border-radius:12px;}
+    }
+  </style>
+</head>
+<body>
+  <main class="calendar" aria-label="Calendar">
+    <div class="header">
+      <div class="month-year">
+        <h2 id="monthYear">Month Year</h2>
+        <div class="muted" id="todayLabel">Today: —</div>
+      </div>
+
+      <div class="controls" role="toolbar" aria-label="Month navigation">
+        <button class="btn icon" id="prevBtn" title="Previous month" aria-label="Previous month">◀</button>
+        <button class="btn" id="todayBtn" title="Go to current month" aria-label="Go to current month">Today</button>
+        <button class="btn icon" id="nextBtn" title="Next month" aria-label="Next month">▶</button>
+      </div>
+    </div>
+
+    <div class="weekdays" aria-hidden="false">
+      <div class="weekday">Sun</div>
+      <div class="weekday">Mon</div>
+      <div class="weekday">Tue</div>
+      <div class="weekday">Wed</div>
+      <div class="weekday">Thu</div>
+      <div class="weekday">Fri</div>
+      <div class="weekday">Sat</div>
+    </div>
+
+    <div class="days" id="daysGrid" role="grid" aria-label="Days of month">
+      <!-- days rendered by JS -->
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <div>Tip: Click <strong>Today</strong> to jump back.</div>
+    </div>
+  </main>
+
+  <script>
+    (function(){
+      // Utility
+      const monthNames = [
+        "January","February","March","April","May","June",
+        "July","August","September","October","November","December"
+      ];
+
+      const daysGrid = document.getElementById('daysGrid');
+      const monthYear = document.getElementById('monthYear');
+      const todayLabel = document.getElementById('todayLabel');
+      const prevBtn = document.getElementById('prevBtn');
+      const nextBtn = document.getElementById('nextBtn');
+      const todayBtn = document.getElementById('todayBtn');
+
+      let view = new Date(); // currently viewed month
+      const realToday = new Date();
+      realToday.setHours(0,0,0,0);
+
+      function render(date){
+        daysGrid.innerHTML = '';
+        const y = date.getFullYear();
+        const m = date.getMonth();
+
+        monthYear.textContent = `${monthNames[m]} ${y}`;
+        todayLabel.textContent = `Today: ${realToday.toLocaleDateString()}`;
+
+        // First day of month and number of days
+        const firstOfMonth = new Date(y, m, 1);
+        const lastOfMonth  = new Date(y, m + 1, 0);
+        const daysInMonth  = lastOfMonth.getDate();
+        const startWeekday = firstOfMonth.getDay(); // 0..6
+
+        // Determine days from previous month to show (so first row fills)
+        const prevMonthLast = new Date(y, m, 0); // last day previous month
+        const prevDaysCount = prevMonthLast.getDate();
+
+        // total cells = blanks before + daysInMonth + trailing blanks -> make rows multiple of 7
+        const totalCells = startWeekday + daysInMonth;
+        const trailing = (7 - (totalCells % 7)) % 7;
+        const cells = totalCells + trailing;
+
+        for(let i=0;i<cells;i++){
+          const cell = document.createElement('div');
+          cell.className = 'day';
+          // calculate day number and whether it belongs to current month
+          const dayIndex = i - startWeekday + 1;
+          let cellDate;
+          if(i < startWeekday){
+            // previous month
+            const dayNum = prevDaysCount - (startWeekday - i - 1);
+            cell.classList.add('inactive');
+            cellDate = new Date(y, m - 1, dayNum);
+            cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="small-note"></div>`;
+          } else if (dayIndex <= daysInMonth){
+            // current month
+            cellDate = new Date(y, m, dayIndex);
+            cell.innerHTML = `<span class="day-number">${dayIndex}</span><div class="small-note"></div>`;
+            // highlight today
+            const tinyToday = new Date(realToday.getFullYear(), realToday.getMonth(), realToday.getDate());
+            const comp = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate());
+            if(+comp === +tinyToday){
+              cell.classList.add('today');
+            }
+          } else {
+            // next month
+            const dayNum = dayIndex - daysInMonth;
+            cell.classList.add('inactive');
+            cellDate = new Date(y, m + 1, dayNum);
+            cell.innerHTML = `<span class="day-number">${dayNum}</span><div class="small-note"></div>`;
+          }
+
+          // Optional: attach click handler to show date info (example)
+          cell.addEventListener('click', ()=> {
+            const dd = cellDate.toLocaleDateString();
+            // Simple UI feedback — you can replace with modal or event creation
+            alert('Selected date: ' + dd);
+          });
+
+          daysGrid.appendChild(cell);
+        }
+      }
+
+      // Navigation
+      prevBtn.addEventListener('click', ()=>{
+        view = new Date(view.getFullYear(), view.getMonth() - 1, 1);
+        render(view);
+      });
+
+      nextBtn.addEventListener('click', ()=>{
+        view = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+        render(view);
+      });
+
+      todayBtn.addEventListener('click', ()=>{
+        view = new Date();
+        render(view);
+      });
+
+      // initial render
+      render(view);
+    })();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
